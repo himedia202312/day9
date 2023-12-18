@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script>
+        let span;
+        let x=0; //화살의 x 축 
+        let velX=5; //화살의  x축 방향으로 증감분
+
+        //화살표 움직이기 
+        function move(){
+            x=x+velX;
+            span.style.left = x+"px";
+        }
+
+        //화살표 생성하기 
+        function init(){
+            span=document.createElement("span");
+            span.innerText="→";
+            span.style.position="absolute";
+            span.style.top=200+"px";
+            span.style.left=0+"px";
+
+            //부모 요소에 부착 
+            document.body.appendChild(span);
+        }
+        
+        function gameLoop(){
+            setInterval("move()", 100);
+        }
+
+        addEventListener("load", function(){
+            init();
+            gameLoop();
+        })
+    </script>
+</head>
+<body>
+</body>
+</html>

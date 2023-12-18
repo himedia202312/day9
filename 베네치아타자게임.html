@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #wrapper{
+            width:1200px;
+            height:900px;
+            background: yellow;
+            margin: auto;
+        }
+        #control{
+            width:200px;
+            height:100%;
+            float:left;
+            background-color: aqua;
+        }
+        #content{
+            width:1000px;
+            height:100%;
+            float: left;
+            position: relative;
+            overflow: hidden;
+        }
+        #keyword{
+            width:96%;
+            height:75px;
+            font-size:30px;
+        }
+        #hp-box{
+            width:100%;
+            height:200px;
+            background: yellow;
+            position: relative;
+        }
+        select, button{
+            margin-top: 5px;
+            width:100%;
+            height:40px;
+            font-size:30px;
+        }
+
+    </style>
+    <script src="../lib/common.js"></script>
+    <script>
+        //게임에 사용할 단어들을 배열화 시켜놓아야, 
+        //1) 동시에 내려오게(반복문) 처리 
+        //2) 입력 단어와 하강중인 단어와의 일치 여부 판단(반복문)
+        let word=
+        [
+            ["강아지","무당","하늘","우주","귤","무지개","광화문","마우스","태국","새벽"],
+            ["컴퓨터","자바","유리","가수","저녁","상자","휴대폰","수업","주말","병원"],
+            ["보약","천당","풀","생수","개념","고양이","떡","화면","플라스틱","불고기"]
+        ];
+        
+        let content;
+        let keyword;
+        let hpBox;
+        let spanArray=[]; //단어를 담고 있는 span의 정보를 담기위한 배열
+                            //이 배열을 통해 span을 각각 제어할 수 있다..
+        let velY=5; //5걸음씩 내려오게...
+        let stage=0; //현재 사용자가 게임중인 스테이지 레벨 값
+        let hpArray=[]; //생성된 hp 박스를 보관해놓을 배열 
+                            //왜 보관해야 하나? 제어하려고...
+                            //기왕이면 생성된 hp 2차원구조이므로, 배열또한 
+                            //2차원으로 짝을 맞추면, 개발하기 너무 편하다...
+        let flag=false;
+        let hpRowIndex=0;//hp 이차원배열의 층수 접근
+        let hpColIndex=0; //hp  이차원배열내의 일차원배열의 호수 접근
+        let bt;
+        let level; //게임의 stage를 결정짓는 변수 
+        let bgArray=["bene1.webp","bene2.jpg","bene3.bmp"];
+
+        //배열에 들어있는 텍스트 정보를 , 실제 움직이는 span화시켜 
+        //제어할 수 있도록 화면에 등장시키기..
+        function createWord(){
+            stage = parseInt(level.value);
+
+            for(let i=0;i<word[stage].length;i++){
+                let span=document.createElement("span");
+                span.innerText=word[stage][i];
+                span.style.position="absolute";
+                span.style.left=i*100+"px";
+                span.style.top=getRandomByRange(-100,101)+"px";
+
+                //content에 부착 
+                content.appendChild(span);
+                spanArray.push(span);//생성된 span 보관
+            }
+        }
+
+        //텍스트박스에 입력한 값과, 화면에 등장한 모든 단어와 서로
+        //일치하는지 여부를 따져보고, 일치하면 화면에서 단어제거, 점수증가
+        function enterKey(){
+            //화면에 존재하는 span의 수만큼 반복문 수행하면서
+            //입력한 텍스트값과 일치여부를 따져보기
+
+            if(event.keyCode==13){//엔터를 치면..
+                for(let i=0;i<spanArray.length;i++){
+                    if(keyword.value==spanArray[i].innerText){
+                        console.log("단어 일치발견", i);
+
+                        //화면에서 해당 span제거 
+                        content.removeChild(spanArray[i]);
+
+                        //spanArray배열에서도 제거해야 함..
+                        //splice(몇번째, 몇개); splice(index ,1);
+                        //spanArray.splice(내가알아맞춘단어index,  1);
+                        spanArray.splice(i,  1);
+                    }
+                }
+            }
+        }
+
+        function down(){
+            //모든 단어가 내려오게 처리..
+            for(let i=0;i<spanArray.length;i++){
+                //단어의 위치를 내려오게...
+                spanArray[i].style.top=parseInt(spanArray[i].style.top)+velY+"px";
+            }
+        }
+
+        // hp를 표현하는 9개의 사각형을 생성하여, hpBox에 부착 
+        function createHp(){
+            for(let a=0;a<3;a++){
+                let arr=[];
+                for(let i=0;i<3;i++){
+                    let hp=document.createElement("div");
+                    hp.style.width=60+"px";
+                    hp.style.height=60+"px";
+                    hp.style.background="red";
+                    hp.style.position="absolute";
+                    hp.style.left=10+(61*i)+"px";
+                    hp.style.top=10+(61*a)+"px";
+
+                    hpBox.appendChild(hp);
+                    arr.push(hp);
+                }
+                //채워진 arr 배열을, 큰 배열인 hpArray에 다시 넣자 
+                hpArray.push(arr); //층수만큼 수행...
+            }
+        }
+
+        //화면에 남아있는 단어를 대상으로, 데드라인을 넘어섰는지 판단하여
+        //넘어선 경우, hp를 하나 깎고, 단어도 사라지게(시각적제거+배열에서 제거)
+        function checkDeadLine(){
+
+            //남은 단어 배열 수만큼 반복..
+            for(let i=0;i<spanArray.length;i++){
+                if(parseInt(spanArray[i].style.top) >=200){
+
+                    //시각적으로 화면에서 제거
+                    content.removeChild(spanArray[i]);
+
+                    //배열에서도 제거 
+                    spanArray.splice( i , 1);
+
+                    //hp도 제거 
+                    hpArray[hpRowIndex][hpColIndex].style.background="yellow";
+                    hpColIndex++;
+
+                    //hp에 대한 처리 
+                    if(hpColIndex>2){
+                        hpRowIndex++;
+                        hpColIndex=0;      
+                    }
+                }
+            }
+        }
+
+        //사용자가 선택한 레벨로 게임을 시작함
+        function startGame(){
+            //기존에 잇는 단어들을 모두 제거 
+            for(let i=0;i<spanArray.length;i++){
+                content.removeChild( spanArray[i] );
+            }
+            spanArray=[];
+
+            createWord();
+        }
+
+        function setBg(index){
+            console.log("현재 레벨은 ", index);
+
+            //content div에 배경적용 
+            
+            content.style.backgroundImage="url(../images/"+bgArray[index]+")";
+            content.style.backgroundSize="1000px 900px";
+        }
+
+        //단어들이 일정시간 간격을 두고, 점점 내려오는 효과..
+        function gameLoop(){
+            if(flag){
+                checkDeadLine();//데드라인 넘어섰는지 판단..
+                down();
+            }
+        }
+
+        addEventListener("load", function(){
+            content = document.getElementById("content");
+            keyword = document.getElementById("keyword");
+            hpBox = document.getElementById("hp-box");
+            bt = document.getElementById("bt");
+            level = document.getElementById("level");
+
+            bt.addEventListener("click", function(){
+                flag=!flag;
+
+                if(flag){
+                    this.innerText="Pause";
+                }else{
+                    this.innerText="Play";
+                }
+            });
+            
+            createHp(); //hp 생성 
+            setBg(level.value);//배경 이미지 설정 
+
+            //무언가 움직임이 있는 프로그램에서는 loop가 존재해야 함 
+            setInterval("gameLoop()", 100);
+        });        
+    </script>
+</head>
+<body>
+    <div id="wrapper">
+        <div id="control">
+            <input type="text" id="keyword" onKeyUp="enterKey()">
+            <div id="hp-box"></div>
+            <button onClick="startGame()">게임시작</button>
+            <button id="bt">Play</button>
+            <select id="level" onChange="setBg(this.value)">
+                <option value="0">레벨1</option>
+                <option value="1">레벨2</option>
+                <option value="2">레벨3</option>
+            </select>
+        </div>
+        <div id="content"></div>
+    </div>
+</body>
+</html>
+
+
+
+
+
+
